@@ -1,0 +1,19 @@
+[package]
+name = "seedcrack-wasm"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later AND MIT"
+description = "The seedcrack search as a small standalone wasm module, for Web Workers that scan slices of a job"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+seedcrack = { path = "..", default-features = false }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"

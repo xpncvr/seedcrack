@@ -1,0 +1,16 @@
+[package]
+name = "seedcrack"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later AND MIT"
+description = "Recovers a Minecraft (1.18 and later) world seed from structures, End pillars, decorations and the hashed seed a server sends"
+keywords = ["minecraft", "seed", "worldgen"]
+categories = ["algorithms"]
+exclude = ["seedcrack-wasm"]
+
+[dependencies]
+sha2 = "0.11"
+
+[features]
+default = ["threads"]
+threads = []
