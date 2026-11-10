@@ -9,6 +9,8 @@ which builds on KaptainWutax's original SeedCracker. Constants and placement
 rules were checked against the game's own code and data rather than copied
 from SeedcrackerX, so a few finders differ from it.
 
+This crate is used in my rust Minecraft client https://github.com/torch-client/torch-client
+
 ## Use
 
 ```rust
