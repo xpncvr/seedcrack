@@ -307,4 +307,12 @@ impl Placement {
         let l = self.limit();
         self.spread == Spread::Linear && l % 4 == 0 && l & (l - 1) != 0
     }
+
+    pub fn lift_bits(&self) -> u32 {
+        let l = self.limit();
+        if self.spread != Spread::Linear || l <= 0 || l & (l - 1) == 0 {
+            return 0;
+        }
+        l.trailing_zeros()
+    }
 }

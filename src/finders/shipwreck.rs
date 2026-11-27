@@ -1,5 +1,5 @@
 use super::chunk_biome;
-use super::template::{Rotation, template_matches};
+use super::template::Rotation;
 use crate::placement::StructureSet;
 use crate::world::{Cuboid, Found, Observation, StructureObservation, World};
 

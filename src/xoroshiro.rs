@@ -37,6 +37,17 @@ impl WorldgenRandom {
         }
     }
 
+    pub fn from_state(lo: u64, hi: u64) -> Self {
+        if lo | hi == 0 {
+            return WorldgenRandom { lo: GOLDEN_RATIO_64, hi: SILVER_RATIO_64 };
+        }
+        WorldgenRandom { lo, hi }
+    }
+
+    pub fn next_raw(&mut self) -> u64 {
+        self.raw()
+    }
+
     fn raw(&mut self) -> u64 {
         let (s0, mut s1) = (self.lo, self.hi);
         let result = s0.wrapping_add(s1).rotate_left(17).wrapping_add(s0);

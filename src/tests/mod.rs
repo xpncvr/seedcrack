@@ -1,7 +1,12 @@
+mod bedrock;
+mod bedrock_stage;
+mod bedrock_vectors;
+mod fast;
 mod vectors;
 
 use std::collections::BTreeSet;
 
+use crate::bedrock::{Band, BedrockCell, OverworldFloor};
 use crate::cracker::{Cracker, Event, Stage};
 use crate::decorator::{DecoratorKind, DecoratorObservation};
 use crate::hash;
@@ -171,6 +176,16 @@ fn run(cracker: &mut Cracker) -> Vec<Event> {
     events
 }
 
+fn assert_lifted(cracker: &Cracker, events: &[Event]) {
+    let seeds = cracker.structure_seeds().unwrap_or_else(|| panic!("{events:?}"));
+    assert!(seeds.binary_search(&(WORLD & MASK)).is_ok(), "{events:?}");
+    for &seed in seeds {
+        for s in cracker.structures() {
+            assert!(crate::cracker::Check::new(s).test(seed), "{seed} does not fit {s:?}");
+        }
+    }
+}
+
 #[test]
 fn cracks_by_lifting_then_hash_or_dungeons() {
     let mut cracker = Cracker::new(Version::V26_2);
@@ -188,7 +203,7 @@ fn cracks_by_lifting_then_hash_or_dungeons() {
 
     let events = run(&mut cracker);
     assert!(events.contains(&Event::Started(Stage::LiftLow)));
-    assert_eq!(cracker.structure_seeds(), Some(&[WORLD & MASK][..]), "{events:?}");
+    assert_lifted(&cracker, &events);
 
     let mut by_hash = cracker.clone();
     by_hash.add(Observation::HashedSeed(hash::obfuscate(WORLD)));
@@ -267,7 +282,7 @@ fn inconsistent_pillars_do_not_discard_lifted_seed() {
     }
     let events = run(&mut cracker);
     assert!(events.contains(&Event::PillarsInconsistent), "{events:?}");
-    assert_eq!(cracker.structure_seeds(), Some(&[WORLD & MASK][..]), "{events:?}");
+    assert_lifted(&cracker, &events);
 }
 
 #[test]
@@ -297,7 +312,8 @@ fn hints_follow_the_stage() {
     let cracker = Cracker::new(Version::V26_2);
     let hints = cracker.hints();
     assert!(!hints.is_empty());
-    let first = hints[0];
+    assert_eq!(hints[0].finder, FinderKind::EndPillars, "{hints:?}");
+    let first = hints.iter().find(|h| matches!(h.finder.yields(), Yields::Structure(_))).unwrap();
     assert_eq!(first.rank, 0);
     assert!(matches!(first.finder.yields(), Yields::Structure(s) if s.placement().liftable()));
     assert_eq!(first.finder, FinderKind::Outpost, "{hints:?}");
@@ -368,4 +384,73 @@ fn slices_through_tasks_match_step() {
 fn task_bytes_reject_garbage() {
     assert!(crate::cracker::Task::from_bytes(&[]).is_none());
     assert!(crate::cracker::Task::from_bytes(&[99, 0, 0]).is_none());
+}
+
+fn floor_cells_around(band_seed: i64, x0: i32, z0: i32, chunks: i32) -> Vec<BedrockCell> {
+    let mut cells = Vec::new();
+    for x in x0..x0 + 16 * chunks {
+        for z in z0..z0 + 16 {
+            let top = BedrockCell::new(Band::NetherFloor, x, 4, z, true).unwrap();
+            if top.holds_for_band_seed(band_seed) {
+                cells.push(top);
+            }
+            let bottom = BedrockCell::new(Band::NetherFloor, x, 1, z, false).unwrap();
+            if bottom.holds_for_band_seed(band_seed) {
+                cells.push(bottom);
+            }
+        }
+    }
+    cells
+}
+
+fn roof_cells_around(band_seed: i64, x0: i32, z0: i32, chunks: i32) -> Vec<BedrockCell> {
+    let mut cells = Vec::new();
+    for x in x0..x0 + 16 * chunks {
+        for z in z0..z0 + 16 {
+            for (y, bedrock) in [(123, true), (126, false)] {
+                let cell = BedrockCell::new(Band::NetherRoof, x, y, z, bedrock).unwrap();
+                if cell.holds_for_band_seed(band_seed) {
+                    cells.push(cell);
+                }
+            }
+        }
+    }
+    cells
+}
+
+fn overworld_cells_around(world: i64, x0: i32, z0: i32, columns: i32) -> Vec<BedrockCell> {
+    let mut cells = Vec::new();
+    for x in x0..x0 + columns {
+        for y in Band::OverworldFloor.gradient_ys() {
+            let bedrock = BedrockCell::new(Band::OverworldFloor, x, y, z0, true).unwrap();
+            let cell = if OverworldFloor::new(&[bedrock]).test(world) {
+                bedrock
+            } else {
+                BedrockCell::new(Band::OverworldFloor, x, y, z0, false).unwrap()
+            };
+            cells.push(cell);
+        }
+    }
+    cells
+}
+
+struct Mix(u64);
+
+impl Mix {
+    fn next(&mut self) -> u64 {
+        self.0 = self.0.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        let z = (self.0 ^ self.0 >> 30).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        let z = (z ^ z >> 27).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^ z >> 31
+    }
+
+    fn below(&mut self, n: u64) -> u64 {
+        self.next() % n
+    }
+
+    fn shuffle<T>(&mut self, items: &mut [T]) {
+        for i in (1..items.len()).rev() {
+            items.swap(i, self.below(i as u64 + 1) as usize);
+        }
+    }
 }

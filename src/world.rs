@@ -1,3 +1,4 @@
+use crate::bedrock::BedrockCell;
 use crate::decorator::DecoratorObservation;
 use crate::pillar::PillarObservation;
 use crate::placement::StructureSet;
@@ -25,6 +26,7 @@ pub enum Observation {
     Decorator(DecoratorObservation),
     Pillars(PillarObservation),
     HashedSeed(i64),
+    Bedrock(BedrockCell),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
